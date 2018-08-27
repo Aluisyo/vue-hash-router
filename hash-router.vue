@@ -8,7 +8,8 @@
       path = path !== '/' && path[last] === '/' ? path.slice(0,last) : path
 
       return {
-        currentRoute: path + window.location.hash
+        currentRoute: path + window.location.hash,
+        params: [],
       }
     },
     props: {
@@ -24,12 +25,50 @@
       })
     },
     computed: {
+      routeParams() {
+        return Object.keys(this.params).reduce( (function(acc,k) {
+          acc.props[k] = this.params[k];
+          return acc
+        }).bind(this), {props:{}});
+      },
       viewComponent() {
-        return this.routes[this.currentRoute] || this.routes['NotFound'];
-      }
+        let route;
+
+        Object.keys(this.routes).forEach( (k) => {
+          // break early if we already have a match
+          if (route !== undefined) { return }
+
+          const routeParts = k.split("/");
+          const pathParts = this.currentRoute.split("/");
+
+          // find a match
+          if (routeParts.length === pathParts.length) {
+            this.params = {};
+            const match = routeParts.every( (part, i) => {
+              if (part[0] === ":") {
+                this.params[part.substring(1)] = pathParts[i];
+                return true
+              } else if (part === pathParts[i]) {
+                return true
+              } else {
+                return false
+              }
+            });
+
+            // if match found, set the route to the matching route
+            if (match) {
+              route = this.routes[k];
+            }
+          }
+        });
+
+        route = route || this.routes['NotFound']
+        return route;
+      },
     },
+    methods: {},
     render(createElement) {
-      return createElement(this.viewComponent)
+      return createElement(this.viewComponent, this.routeParams)
     },
   });
 
